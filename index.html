@@ -18,7 +18,7 @@ html { scroll-behavior: smooth; }
 body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); line-height: 1.85; font-weight: 300; }
 
 header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; padding: 22px 48px; background: rgba(12,12,12,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
-.logo { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 400; letter-spacing: 0.12em; color: var(--gold); text-decoration: none; }
+.logo { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 400; letter-spacing: 0.12em; color: var(--gold); text-decoration: none; cursor: pointer; }
 .logo span { display: block; font-size: 10px; letter-spacing: 0.22em; color: var(--muted); font-family: 'Noto Sans JP', sans-serif; font-weight: 300; margin-top: 2px; }
 nav { display: flex; gap: 28px; align-items: center; }
 nav a { color: var(--muted); text-decoration: none; font-size: 12px; letter-spacing: 0.15em; transition: color 0.2s; }
@@ -107,7 +107,7 @@ footer p { font-size: 12px; color: var(--muted); }
 <body>
 
 <header>
-  <a class="logo" href="#">
+  <a class="logo" href="javascript:void(0)" onclick="window.scrollTo({top:0,behavior:'smooth'})">
     Veritas Watch
     <span class="t" data-ja="合同会社 · 中古高級時計専門" data-en="Pre-owned Luxury Watches · Okinawa">合同会社 · 中古高級時計専門</span>
   </a>
