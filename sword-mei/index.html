@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>刀剣 銘鑑定支援ツール（試作版）| Veritas Watch 内部ツール</title>
+<style>
+:root {
+  --bg: #0c0c0c; --bg2: #141414; --card: #181818;
+  --text: #f0ece4; --muted: #999990; --line: #2a2a2a;
+  --gold: #c9a96e; --danger: #c96e6e; --ok: #7ec98a;
+  --radius: 4px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.75; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; }
+header.page { border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 28px; }
+header.page h1 { font-size: 20px; font-weight: 500; color: var(--gold); letter-spacing: 0.02em; }
+header.page p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+.disclaimer { background: #201a12; border: 1px solid #4a3a1e; border-left: 3px solid var(--gold); padding: 14px 16px; border-radius: var(--radius); font-size: 13px; color: #e8dcc0; margin-bottom: 28px; }
+.disclaimer strong { color: var(--gold); }
+
+.step { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+.step h2 { font-size: 14px; font-weight: 500; color: var(--gold); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: var(--bg); font-size: 12px; font-weight: 700; }
+.step .hint { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; background: var(--gold); color: var(--bg); border: none; font-size: 13px; font-weight: 500; border-radius: var(--radius); cursor: pointer; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+.btn.secondary:hover { border-color: var(--gold); color: var(--gold); opacity: 1; }
+.btn.small { padding: 6px 12px; font-size: 12px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row + .row { margin-top: 10px; }
+
+input[type="file"] { display: none; }
+
+.canvas-wrap { position: relative; display: inline-block; max-width: 100%; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #000; }
+.canvas-wrap canvas { display: block; max-width: 100%; height: auto; touch-action: none; }
+#selCanvas { position: absolute; top: 0; left: 0; cursor: crosshair; }
+video#cam { width: 100%; max-width: 480px; border-radius: var(--radius); border: 1px solid var(--line); background: #000; }
+
+.controls-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+label.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+input[type="range"] { width: 160px; vertical-align: middle; }
+
+textarea { width: 100%; min-height: 70px; background: var(--bg2); border: 1px solid var(--line); color: var(--text); border-radius: var(--radius); padding: 10px; font-size: 15px; font-family: inherit; resize: vertical; }
+textarea:focus { outline: none; border-color: var(--gold); }
+
+.progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 10px; display: none; }
+.progress.active { display: block; }
+.progress-bar { height: 100%; width: 0%; background: var(--gold); transition: width 0.2s; }
+.progress-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.results { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.result-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; background: var(--bg2); }
+.result-card .rank { font-size: 11px; color: var(--gold); letter-spacing: 0.1em; }
+.result-card .name { font-size: 17px; font-weight: 500; margin-top: 2px; }
+.result-card .reading { font-size: 12px; color: var(--muted); margin-left: 6px; }
+.result-card .meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.result-card .note { font-size: 13px; margin-top: 8px; color: #d8d2c4; }
+.result-card .score-bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.result-card .score-bar > div { height: 100%; background: var(--gold); }
+.empty { font-size: 13px; color: var(--muted); padding: 8px 0; }
+
+.status { font-size: 12px; margin-top: 8px; }
+.status.err { color: var(--danger); }
+.status.ok { color: var(--ok); }
+
+footer.page { margin-top: 40px; font-size: 11px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>刀剣 銘鑑定支援ツール（試作版）</h1>
+    <p>茎（なかご）の銘をカメラ／写真から読み取り、刀工候補を参考表示する社内試作ツールです。</p>
+  </header>
+
+  <div class="disclaimer">
+    <strong>注意：</strong>本ツールはOCR文字認識と参考データベースの照合による<strong>候補の絞り込み支援</strong>を行うものであり、真贋・在銘の真偽・刀工の断定を行うものではありません。摩耗・当て字・異体字・偽銘の可能性があるため、最終的な鑑定は必ず日本美術刀剣保存協会（NBTHK）等の正規の鑑定機関の審査結果に基づいて判断してください。収録データベースも代表的な刀工のみを収めた参考用の初期セットです。
+  </div>
+
+  <div class="step">
+    <h2><span class="num">1</span>画像を用意する</h2>
+    <p class="hint">なかごの銘部分ができるだけ正面から、影が入らない光で撮影・撮影済みの画像を選択してください。</p>
+    <div class="row">
+      <button class="btn" id="btnStartCam">カメラを起動</button>
+      <button class="btn secondary" id="btnPickFile">写真を選択</button>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" />
+    </div>
+    <div class="row" id="camRow" style="display:none; margin-top:12px;">
+      <video id="cam" autoplay playsinline muted></video>
+    </div>
+    <div class="row" id="camActions" style="display:none;">
+      <button class="btn" id="btnCapture">撮影する</button>
+      <button class="btn secondary" id="btnStopCam">カメラを閉じる</button>
+    </div>
+    <p class="status err" id="camStatus"></p>
+  </div>
+
+  <div class="step" id="editStep" style="display:none;">
+    <h2><span class="num">2</span>銘の部分を切り出す・調整する</h2>
+    <p class="hint">ドラッグして銘の範囲を選択 → 「この範囲でトリミング」。回転や二値化で文字を見やすく調整できます。</p>
+    <div class="canvas-wrap">
+      <canvas id="mainCanvas"></canvas>
+      <canvas id="selCanvas"></canvas>
+    </div>
+    <div class="controls-grid">
+      <button class="btn small secondary" id="btnCrop">この範囲でトリミング</button>
+      <button class="btn small secondary" id="btnRotateL">↺ 90°回転</button>
+      <button class="btn small secondary" id="btnRotateR">↻ 90°回転</button>
+      <button class="btn small secondary" id="btnReset">元画像に戻す</button>
+    </div>
+    <div class="controls-grid">
+      <label class="chk"><input type="checkbox" id="chkBinarize" /> 二値化を適用</label>
+      <label class="chk"><input type="checkbox" id="chkAuto" checked /> 自動しきい値(Otsu)</label>
+      <label class="chk">しきい値 <input type="range" id="rngThresh" min="0" max="255" value="128" disabled /></label>
+      <label class="chk"><input type="checkbox" id="chkInvert" /> 白黒反転</label>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn" id="btnRecognize">文字認識を実行</button>
+    </div>
+    <div class="progress" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+    <p class="progress-label" id="progressLabel"></p>
+  </div>
+
+  <div class="step" id="textStep" style="display:none;">
+    <h2><span class="num">3</span>認識結果を確認・修正する</h2>
+    <p class="hint">OCRは誤認識することがあります。実際に読める文字に修正してから候補を検索してください。</p>
+    <textarea id="ocrText" placeholder="ここに認識結果が表示されます。手入力での修正も可能です。"></textarea>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="btnMatch">候補を検索</button>
+    </div>
+  </div>
+
+  <div class="step" id="resultStep" style="display:none;">
+    <h2><span class="num">4</span>刀工候補（参考）</h2>
+    <p class="hint">スコアはあくまで文字列の一致度に基づく参考値であり、鑑定的な確度を意味しません。</p>
+    <div class="results" id="results"></div>
+  </div>
+
+  <footer class="page">
+    参考データベース: <code>mei-database.json</code>（収録数は限定的です。追加編集で拡張してください）
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+
+  const camStatus = $("camStatus");
+  const video = $("cam");
+  const camRow = $("camRow");
+  const camActions = $("camActions");
+  const editStep = $("editStep");
+  const textStep = $("textStep");
+  const resultStep = $("resultStep");
+
+  const mainCanvas = $("mainCanvas");
+  const selCanvas = $("selCanvas");
+  const mainCtx = mainCanvas.getContext("2d");
+  const selCtx = selCanvas.getContext("2d");
+
+  let stream = null;
+  let originalImageBitmapSrc = null; // dataURL of the very first loaded image, for "reset"
+  let selection = null; // {x,y,w,h} in canvas pixel coords
+  let dragging = false;
+  let dragStart = null;
+
+  let database = [];
+
+  fetch("mei-database.json")
+    .then((r) => r.json())
+    .then((json) => { database = json.entries || []; })
+    .catch((e) => { console.error("failed to load database", e); });
+
+  // ---------- Camera ----------
+  $("btnStartCam").addEventListener("click", async () => {
+    camStatus.textContent = "";
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+      video.srcObject = stream;
+      camRow.style.display = "flex";
+      camActions.style.display = "flex";
+    } catch (e) {
+      camStatus.textContent = "カメラを起動できませんでした（権限が拒否されたか非対応の環境です）。「写真を選択」をご利用ください。";
+    }
+  });
+
+  $("btnStopCam").addEventListener("click", stopCamera);
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      stream = null;
+    }
+    camRow.style.display = "none";
+    camActions.style.display = "none";
+  }
+
+  $("btnCapture").addEventListener("click", () => {
+    const w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) return;
+    const tmp = document.createElement("canvas");
+    tmp.width = w; tmp.height = h;
+    tmp.getContext("2d").drawImage(video, 0, 0, w, h);
+    loadImageToCanvas(tmp.toDataURL("image/png"));
+    stopCamera();
+  });
+
+  // ---------- File upload ----------
+  $("btnPickFile").addEventListener("click", () => $("fileInput").click());
+  $("fileInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => loadImageToCanvas(ev.target.result);
+    reader.readAsDataURL(file);
+  });
+
+  function loadImageToCanvas(dataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      originalImageBitmapSrc = dataUrl;
+      drawImageObjectToMain(img);
+      editStep.style.display = "block";
+      textStep.style.display = "none";
+      resultStep.style.display = "none";
+      editStep.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    img.src = dataUrl;
+  }
+
+  function drawImageObjectToMain(img) {
+    // cap max dimension for performance
+    const maxDim = 1600;
+    let w = img.width, h = img.height;
+    const scale = Math.min(1, maxDim / Math.max(w, h));
+    w = Math.round(w * scale); h = Math.round(h * scale);
+    mainCanvas.width = w; mainCanvas.height = h;
+    selCanvas.width = w; selCanvas.height = h;
+    mainCtx.drawImage(img, 0, 0, w, h);
+    clearSelection();
+    takeSnapshot();
+  }
+
+  // ---------- Selection (crop) ----------
+  function canvasPoint(evt) {
+    const rect = selCanvas.getBoundingClientRect();
+    const scaleX = selCanvas.width / rect.width;
+    const scaleY = selCanvas.height / rect.height;
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
+
+  function clearSelection() {
+    selection = null;
+    selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+  }
+
+  function drawSelectionRect(x, y, w, h) {
+    selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+    selCtx.strokeStyle = "#c9a96e";
+    selCtx.lineWidth = 2;
+    selCtx.setLineDash([6, 4]);
+    selCtx.strokeRect(x, y, w, h);
+    selCtx.fillStyle = "rgba(201,169,110,0.15)";
+    selCtx.fillRect(x, y, w, h);
+  }
+
+  selCanvas.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    dragStart = canvasPoint(e);
+  });
+  selCanvas.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const p = canvasPoint(e);
+    const x = Math.min(dragStart.x, p.x), y = Math.min(dragStart.y, p.y);
+    const w = Math.abs(p.x - dragStart.x), h = Math.abs(p.y - dragStart.y);
+    selection = { x, y, w, h };
+    drawSelectionRect(x, y, w, h);
+  });
+  window.addEventListener("pointerup", () => { dragging = false; });
+
+  $("btnCrop").addEventListener("click", () => {
+    if (!selection || selection.w < 4 || selection.h < 4) return;
+    const { x, y, w, h } = selection;
+    const tmp = document.createElement("canvas");
+    tmp.width = Math.round(w); tmp.height = Math.round(h);
+    tmp.getContext("2d").drawImage(mainCanvas, x, y, w, h, 0, 0, tmp.width, tmp.height);
+    mainCanvas.width = tmp.width; mainCanvas.height = tmp.height;
+    selCanvas.width = tmp.width; selCanvas.height = tmp.height;
+    mainCtx.drawImage(tmp, 0, 0);
+    clearSelection();
+  });
+
+  $("btnReset").addEventListener("click", () => {
+    if (!originalImageBitmapSrc) return;
+    const img = new Image();
+    img.onload = () => drawImageObjectToMain(img);
+    img.src = originalImageBitmapSrc;
+    $("chkBinarize").checked = false;
+    $("chkInvert").checked = false;
+  });
+
+  // ---------- Rotate ----------
+  function rotateCanvas(deg) {
+    const w = mainCanvas.width, h = mainCanvas.height;
+    const tmp = document.createElement("canvas");
+    tmp.width = h; tmp.height = w;
+    const tctx = tmp.getContext("2d");
+    tctx.translate(tmp.width / 2, tmp.height / 2);
+    tctx.rotate((deg * Math.PI) / 180);
+    tctx.drawImage(mainCanvas, -w / 2, -h / 2);
+    mainCanvas.width = tmp.width; mainCanvas.height = tmp.height;
+    selCanvas.width = tmp.width; selCanvas.height = tmp.height;
+    mainCtx.drawImage(tmp, 0, 0);
+    clearSelection();
+  }
+  $("btnRotateL").addEventListener("click", () => rotateCanvas(-90));
+  $("btnRotateR").addEventListener("click", () => rotateCanvas(90));
+
+  // ---------- Preprocess (grayscale / otsu threshold / invert) ----------
+  function otsuThreshold(gray, len) {
+    const hist = new Array(256).fill(0);
+    for (let i = 0; i < len; i++) hist[gray[i]]++;
+    let sum = 0;
+    for (let t = 0; t < 256; t++) sum += t * hist[t];
+    let sumB = 0, wB = 0, wF = 0, maxVar = 0, threshold = 128;
+    for (let t = 0; t < 256; t++) {
+      wB += hist[t];
+      if (wB === 0) continue;
+      wF = len - wB;
+      if (wF === 0) break;
+      sumB += t * hist[t];
+      const mB = sumB / wB;
+      const mF = (sum - sumB) / wF;
+      const varBetween = wB * wF * (mB - mF) * (mB - mF);
+      if (varBetween > maxVar) { maxVar = varBetween; threshold = t; }
+    }
+    return threshold;
+  }
+
+  function applyPreprocess() {
+    if (!originalImageBitmapSrc) return;
+    const binarize = $("chkBinarize").checked;
+    const invert = $("chkInvert").checked;
+    const auto = $("chkAuto").checked;
+    const manualThresh = parseInt($("rngThresh").value, 10);
+
+    const w = mainCanvas.width, h = mainCanvas.height;
+    const imgData = mainCtx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const len = w * h;
+    const gray = new Uint8ClampedArray(len);
+
+    let min = 255, max = 0;
+    for (let i = 0, p = 0; i < len; i++, p += 4) {
+      const g = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+      gray[i] = g;
+      if (g < min) min = g;
+      if (g > max) max = g;
+    }
+    // contrast stretch
+    const range = Math.max(1, max - min);
+    for (let i = 0; i < len; i++) {
+      gray[i] = Math.round(((gray[i] - min) / range) * 255);
+    }
+
+    if (binarize) {
+      const threshold = auto ? otsuThreshold(gray, len) : manualThresh;
+      for (let i = 0, p = 0; i < len; i++, p += 4) {
+        let v = gray[i] >= threshold ? 255 : 0;
+        if (invert) v = 255 - v;
+        data[p] = data[p + 1] = data[p + 2] = v;
+      }
+    } else {
+      for (let i = 0, p = 0; i < len; i++, p += 4) {
+        let v = gray[i];
+        if (invert) v = 255 - v;
+        data[p] = data[p + 1] = data[p + 2] = v;
+      }
+    }
+    mainCtx.putImageData(imgData, 0, 0);
+  }
+
+  // Snapshot management: preprocessing (grayscale/threshold/invert) must always
+  // run against the untouched crop, otherwise repeated toggling would compound
+  // grayscale/threshold operations on top of already-processed pixels.
+  let snapshotDataUrl = null;
+  function takeSnapshot() { snapshotDataUrl = mainCanvas.toDataURL("image/png"); }
+  function reprocessFromSnapshot() {
+    if (!snapshotDataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+      mainCtx.drawImage(img, 0, 0);
+      applyPreprocess();
+    };
+    img.src = snapshotDataUrl;
+  }
+
+  $("chkAuto").addEventListener("change", (e) => {
+    $("rngThresh").disabled = e.target.checked;
+    reprocessFromSnapshot();
+  });
+  ["chkBinarize", "chkInvert"].forEach((id) => $(id).addEventListener("change", reprocessFromSnapshot));
+  $("rngThresh").addEventListener("input", () => {
+    if (!$("chkAuto").checked && $("chkBinarize").checked) reprocessFromSnapshot();
+  });
+  ["btnCrop", "btnRotateL", "btnRotateR", "btnReset"].forEach((id) => {
+    $(id).addEventListener("click", () => setTimeout(takeSnapshot, 0));
+  });
+
+  // ---------- OCR ----------
+  const progressWrap = $("progressWrap");
+  const progressBar = $("progressBar");
+  const progressLabel = $("progressLabel");
+
+  $("btnRecognize").addEventListener("click", async () => {
+    const btn = $("btnRecognize");
+    btn.disabled = true;
+    progressWrap.classList.add("active");
+    progressBar.style.width = "0%";
+    progressLabel.textContent = "文字認識モデルを読み込んでいます…";
+    try {
+      const worker = await Tesseract.createWorker("jpn_vert", 1, {
+        logger: (m) => {
+          if (m.status && typeof m.progress === "number") {
+            progressBar.style.width = Math.round(m.progress * 100) + "%";
+            progressLabel.textContent = m.status + " " + Math.round(m.progress * 100) + "%";
+          }
+        }
+      });
+      await worker.setParameters({ tessedit_pageseg_mode: "5" }); // SINGLE_BLOCK_VERT_TEXT
+      const { data } = await worker.recognize(mainCanvas);
+      await worker.terminate();
+
+      const cleaned = (data.text || "").replace(/[\s　]/g, "");
+      $("ocrText").value = cleaned;
+      textStep.style.display = "block";
+      resultStep.style.display = "none";
+      textStep.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e) {
+      console.error(e);
+      progressLabel.textContent = "文字認識に失敗しました。画像やネットワーク接続を確認してください。";
+    } finally {
+      btn.disabled = false;
+      progressWrap.classList.remove("active");
+    }
+  });
+
+  // ---------- Matching ----------
+  function normalize(s) {
+    return (s || "").replace(/[^々〇〻㐀-鿿豈-﫿぀-ゟ゠-ヿ]/g, "");
+  }
+
+  function bigrams(s) {
+    const out = [];
+    for (let i = 0; i < s.length - 1; i++) out.push(s.substr(i, 2));
+    return out;
+  }
+
+  function ngramOverlapScore(text, candidate) {
+    if (candidate.length < 2) return text.includes(candidate) ? 1 : 0;
+    const cb = bigrams(candidate);
+    if (cb.length === 0) return 0;
+    let hits = 0;
+    for (const g of cb) if (text.includes(g)) hits++;
+    return hits / cb.length;
+  }
+
+  function scoreEntry(text, entry) {
+    let score = 0;
+    const candidates = [entry.name, ...(entry.aliases || [])].filter(Boolean);
+    for (const c of candidates) {
+      const norm = normalize(c);
+      if (!norm) continue;
+      if (text.includes(norm)) {
+        score += norm.length * 10;
+      } else {
+        score += ngramOverlapScore(text, norm) * norm.length * 3;
+      }
+    }
+    return score;
+  }
+
+  $("btnMatch").addEventListener("click", () => {
+    const raw = $("ocrText").value;
+    const text = normalize(raw);
+    const resultsEl = $("results");
+    resultStep.style.display = "block";
+    resultStep.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    if (!text) {
+      resultsEl.innerHTML = '<p class="empty">認識結果が空です。手入力で修正してから検索してください。</p>';
+      return;
+    }
+    if (!database.length) {
+      resultsEl.innerHTML = '<p class="empty">データベースの読み込みに失敗しています。mei-database.json を確認してください。</p>';
+      return;
+    }
+
+    const scored = database
+      .map((entry) => ({ entry, score: scoreEntry(text, entry) }))
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
+
+    if (!scored.length) {
+      resultsEl.innerHTML = '<p class="empty">一致する候補が見つかりませんでした。トリミング範囲や二値化設定、または手入力の文字を見直してください。</p>';
+      return;
+    }
+
+    const maxScore = scored[0].score;
+    resultsEl.innerHTML = scored
+      .map((r, i) => {
+        const e = r.entry;
+        const pct = Math.max(6, Math.round((r.score / maxScore) * 100));
+        return `
+          <div class="result-card">
+            <div class="rank">候補 ${i + 1}</div>
+            <div class="name">${escapeHtml(e.name)}<span class="reading">${escapeHtml(e.reading || "")}</span></div>
+            <div class="meta">${escapeHtml(e.era || "")} ／ ${escapeHtml(e.tradition || "")} ／ ${escapeHtml(e.province || "")}</div>
+            <div class="note">${escapeHtml(e.note || "")}</div>
+            <div class="score-bar"><div style="width:${pct}%"></div></div>
+          </div>`;
+      })
+      .join("");
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+})();
+</script>
+</body>
+</html>
