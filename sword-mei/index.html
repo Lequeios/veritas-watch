@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>刀剣 銘・刃文鑑定支援ツール（試作版）| Veritas Watch 内部ツール</title>
+<style>
+:root {
+  --bg: #0c0c0c; --bg2: #141414; --card: #181818;
+  --text: #f0ece4; --muted: #999990; --line: #2a2a2a;
+  --gold: #c9a96e; --danger: #c96e6e; --ok: #7ec98a;
+  --radius: 4px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.75; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; }
+header.page { border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 28px; }
+header.page h1 { font-size: 20px; font-weight: 500; color: var(--gold); letter-spacing: 0.02em; }
+header.page p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+.disclaimer { background: #201a12; border: 1px solid #4a3a1e; border-left: 3px solid var(--gold); padding: 14px 16px; border-radius: var(--radius); font-size: 13px; color: #e8dcc0; margin-bottom: 28px; }
+.disclaimer strong { color: var(--gold); }
+
+.step { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+.step h2 { font-size: 14px; font-weight: 500; color: var(--gold); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: var(--bg); font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.step h2 .optional { font-size: 10px; color: var(--muted); font-weight: 400; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 2px 8px; }
+.step .hint { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; background: var(--gold); color: var(--bg); border: none; font-size: 13px; font-weight: 500; border-radius: var(--radius); cursor: pointer; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+.btn.secondary:hover { border-color: var(--gold); color: var(--gold); opacity: 1; }
+.btn.small { padding: 6px 12px; font-size: 12px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row + .row { margin-top: 10px; }
+
+input[type="file"] { display: none; }
+
+.canvas-wrap { position: relative; display: inline-block; max-width: 100%; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #000; }
+.canvas-wrap canvas { display: block; max-width: 100%; height: auto; touch-action: none; }
+.sel-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; }
+video.cam-preview { width: 100%; max-width: 480px; border-radius: var(--radius); border: 1px solid var(--line); background: #000; }
+
+.controls-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+label.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+input[type="range"] { width: 160px; vertical-align: middle; }
+select { background: var(--bg2); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; font-family: inherit; }
+select:focus { outline: none; border-color: var(--gold); }
+
+textarea { width: 100%; min-height: 70px; background: var(--bg2); border: 1px solid var(--line); color: var(--text); border-radius: var(--radius); padding: 10px; font-size: 15px; font-family: inherit; resize: vertical; }
+textarea:focus { outline: none; border-color: var(--gold); }
+
+.progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 10px; display: none; }
+.progress.active { display: block; }
+.progress-bar { height: 100%; width: 0%; background: var(--gold); transition: width 0.2s; }
+.progress-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.hamon-summary { font-size: 13px; margin-top: 12px; padding: 12px 14px; background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius); }
+.hamon-summary .label { color: var(--gold); font-weight: 500; }
+.hamon-summary .detail { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.7; }
+
+.results { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.result-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; background: var(--bg2); }
+.result-card .rank { font-size: 11px; color: var(--gold); letter-spacing: 0.1em; }
+.result-card .name { font-size: 17px; font-weight: 500; margin-top: 2px; }
+.result-card .reading { font-size: 12px; color: var(--muted); margin-left: 6px; }
+.result-card .meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.result-card .evidence { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.result-card .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); }
+.result-card .tag.hit { color: var(--ok); border-color: var(--ok); }
+.result-card .note { font-size: 13px; margin-top: 8px; color: #d8d2c4; }
+.result-card .score-bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.result-card .score-bar > div { height: 100%; background: var(--gold); }
+.empty { font-size: 13px; color: var(--muted); padding: 8px 0; }
+
+.status { font-size: 12px; margin-top: 8px; }
+.status.err { color: var(--danger); }
+.status.ok { color: var(--ok); }
+
+footer.page { margin-top: 40px; font-size: 11px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>刀剣 銘・刃文鑑定支援ツール（試作版）</h1>
+    <p>茎（なかご）の銘と、刀身の刃文（匂口）の両方をカメラ／写真から読み取り、刀工候補を参考表示する社内試作ツールです。</p>
+  </header>
+
+  <div class="disclaimer">
+    <strong>注意：</strong>本ツールはOCR文字認識・刃文の画像解析と参考データベースの照合による<strong>候補の絞り込み支援</strong>を行うものであり、真贋・在銘の真偽・刀工の断定を行うものではありません。摩耗・当て字・異体字・偽銘の可能性、および刃文解析は画像処理による粗い近似にすぎない点に留意してください。最終的な鑑定は必ず日本美術刀剣保存協会（NBTHK）等の正規の鑑定機関の審査結果に基づいて判断してください。収録データベースも代表的な刀工のみを収めた参考用の初期セットです。
+  </div>
+
+  <!-- ===================== 銘：画像入力 ===================== -->
+  <div class="step">
+    <h2><span class="num">1</span>銘の画像を用意する</h2>
+    <p class="hint">なかごの銘部分ができるだけ正面から、影が入らない光で撮影・撮影済みの画像を選択してください。</p>
+    <div class="row">
+      <button class="btn" id="btnStartCam">カメラを起動</button>
+      <button class="btn secondary" id="btnPickFile">写真を選択</button>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" />
+    </div>
+    <div class="row" id="camRow" style="display:none; margin-top:12px;">
+      <video class="cam-preview" id="cam" autoplay playsinline muted></video>
+    </div>
+    <div class="row" id="camActions" style="display:none;">
+      <button class="btn" id="btnCapture">撮影する</button>
+      <button class="btn secondary" id="btnStopCam">カメラを閉じる</button>
+    </div>
+    <p class="status err" id="camStatus"></p>
+  </div>
+
+  <!-- ===================== 銘：編集＋OCR ===================== -->
+  <div class="step" id="editStep" style="display:none;">
+    <h2><span class="num">2</span>銘の部分を切り出す・調整する</h2>
+    <p class="hint">ドラッグして銘の範囲を選択 → 「この範囲でトリミング」。回転や二値化で文字を見やすく調整できます。</p>
+    <div class="canvas-wrap">
+      <canvas id="mainCanvas"></canvas>
+      <canvas class="sel-canvas" id="selCanvas"></canvas>
+    </div>
+    <div class="controls-grid">
+      <button class="btn small secondary" id="btnCrop">この範囲でトリミング</button>
+      <button class="btn small secondary" id="btnRotateL">↺ 90°回転</button>
+      <button class="btn small secondary" id="btnRotateR">↻ 90°回転</button>
+      <button class="btn small secondary" id="btnReset">元画像に戻す</button>
+    </div>
+    <div class="controls-grid">
+      <label class="chk"><input type="checkbox" id="chkBinarize" /> 二値化を適用</label>
+      <label class="chk"><input type="checkbox" id="chkAuto" checked /> 自動しきい値(Otsu)</label>
+      <label class="chk">しきい値 <input type="range" id="rngThresh" min="0" max="255" value="128" disabled /></label>
+      <label class="chk"><input type="checkbox" id="chkInvert" /> 白黒反転</label>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn" id="btnRecognize">文字認識を実行</button>
+    </div>
+    <div class="progress" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+    <p class="progress-label" id="progressLabel"></p>
+  </div>
+
+  <!-- ===================== 銘：テキスト確認 ===================== -->
+  <div class="step" id="textStep" style="display:none;">
+    <h2><span class="num">3</span>認識結果を確認・修正する</h2>
+    <p class="hint">OCRは誤認識することがあります。実際に読める文字に修正してください。刃文の解析結果もあわせて使いたい場合は、先に下の「4. 刃文を解析する」を行ってから検索してください。</p>
+    <textarea id="ocrText" placeholder="ここに認識結果が表示されます。手入力での修正も可能です。"></textarea>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="btnMatch">候補を検索</button>
+    </div>
+  </div>
+
+  <!-- ===================== 刃文：画像入力＋編集＋解析 ===================== -->
+  <div class="step" id="hamonStep" style="display:none;">
+    <h2><span class="num">4</span>刃文を解析する<span class="optional">任意・精度向上</span></h2>
+    <p class="hint">刃（焼き入れ境界＝匂口）がはっきり映るよう、茎とは別に刀身のクローズアップ写真を用意してください。切っ先と棟を結ぶ線がなるべく水平になるよう回転すると解析精度が上がります。</p>
+    <div class="row">
+      <button class="btn" id="btnStartCamH">カメラを起動</button>
+      <button class="btn secondary" id="btnPickFileH">写真を選択</button>
+      <input type="file" id="fileInputH" accept="image/*" capture="environment" />
+    </div>
+    <div class="row" id="camRowH" style="display:none; margin-top:12px;">
+      <video class="cam-preview" id="camH" autoplay playsinline muted></video>
+    </div>
+    <div class="row" id="camActionsH" style="display:none;">
+      <button class="btn" id="btnCaptureH">撮影する</button>
+      <button class="btn secondary" id="btnStopCamH">カメラを閉じる</button>
+    </div>
+    <p class="status err" id="camStatusH"></p>
+
+    <div id="hamonEditWrap" style="display:none;">
+      <div class="canvas-wrap">
+        <canvas id="hamonCanvas"></canvas>
+        <canvas class="sel-canvas" id="hamonSelCanvas"></canvas>
+      </div>
+      <div class="controls-grid">
+        <button class="btn small secondary" id="btnCropH">この範囲でトリミング</button>
+        <button class="btn small secondary" id="btnRotateLH">↺ 90°回転</button>
+        <button class="btn small secondary" id="btnRotateRH">↻ 90°回転</button>
+        <button class="btn small secondary" id="btnResetH">元画像に戻す</button>
+      </div>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn" id="btnAnalyzeHamon">刃文を解析する</button>
+      </div>
+
+      <div class="canvas-wrap" id="hamonCurveWrap" style="display:none;">
+        <canvas id="hamonCurveCanvas"></canvas>
+      </div>
+      <div class="hamon-summary" id="hamonSummary" style="display:none;"></div>
+
+      <div class="row" style="margin-top:14px;">
+        <label class="chk" style="color:var(--text);">刃文の種類（自動判定・手動で修正可）
+          <select id="hamonSelect" style="margin-left:8px;">
+            <option value="">未選択</option>
+            <option value="直刃">直刃（すぐは）</option>
+            <option value="互の目">互の目（ぐのめ）</option>
+            <option value="丁子">丁子（ちょうじ）</option>
+            <option value="尖り刃">尖り刃・三本杉調</option>
+            <option value="湾れ">湾れ（のたれ）</option>
+            <option value="乱れ">乱れ（みだれ）</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn" id="btnMatchWithHamon">銘＋刃文で候補を検索</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 結果 ===================== -->
+  <div class="step" id="resultStep" style="display:none;">
+    <h2><span class="num">5</span>刀工候補（参考）</h2>
+    <p class="hint">スコアは銘の文字列一致度および刃文の傾向一致に基づく参考値であり、鑑定的な確度を意味しません。</p>
+    <div class="results" id="results"></div>
+  </div>
+
+  <footer class="page">
+    参考データベース: <code>mei-database.json</code>（収録数は限定的です。追加編集で拡張してください）
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+
+  const editStep = $("editStep");
+  const textStep = $("textStep");
+  const hamonStep = $("hamonStep");
+  const resultStep = $("resultStep");
+
+  let database = [];
+  fetch("mei-database.json")
+    .then((r) => r.json())
+    .then((json) => { database = json.entries || []; })
+    .catch((e) => { console.error("failed to load database", e); });
+
+  // =====================================================================
+  // Reusable camera + file-upload capture widget.
+  // =====================================================================
+  function createCaptureUI(cfg) {
+    let stream = null;
+    const video = $(cfg.video);
+    const camRow = $(cfg.camRow);
+    const camActions = $(cfg.camActions);
+    const camStatus = $(cfg.camStatus);
+
+    $(cfg.btnStartCam).addEventListener("click", async () => {
+      camStatus.textContent = "";
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        video.srcObject = stream;
+        camRow.style.display = "flex";
+        camActions.style.display = "flex";
+      } catch (e) {
+        camStatus.textContent = "カメラを起動できませんでした（権限が拒否されたか非対応の環境です）。「写真を選択」をご利用ください。";
+      }
+    });
+
+    function stopCamera() {
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+      camRow.style.display = "none";
+      camActions.style.display = "none";
+    }
+    $(cfg.btnStopCam).addEventListener("click", stopCamera);
+
+    $(cfg.btnCapture).addEventListener("click", () => {
+      const w = video.videoWidth, h = video.videoHeight;
+      if (!w || !h) return;
+      const tmp = document.createElement("canvas");
+      tmp.width = w; tmp.height = h;
+      tmp.getContext("2d").drawImage(video, 0, 0, w, h);
+      cfg.onCaptured(tmp.toDataURL("image/png"));
+      stopCamera();
+    });
+
+    $(cfg.btnPickFile).addEventListener("click", () => $(cfg.fileInput).click());
+    $(cfg.fileInput).addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => cfg.onCaptured(ev.target.result);
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    });
+  }
+
+  // =====================================================================
+  // Reusable crop / rotate / binarize image workspace, backed by a pair
+  // of stacked canvases (one for the image, one transparent overlay for
+  // the drag-to-select rectangle).
+  // =====================================================================
+  function createImageStage(cfg) {
+    const mainCanvas = $(cfg.mainCanvas);
+    const selCanvas = $(cfg.selCanvas);
+    const mainCtx = mainCanvas.getContext("2d");
+    const selCtx = selCanvas.getContext("2d");
+
+    const chkBinarize = cfg.chkBinarize ? $(cfg.chkBinarize) : null;
+    const chkAuto = cfg.chkAuto ? $(cfg.chkAuto) : null;
+    const rngThresh = cfg.rngThresh ? $(cfg.rngThresh) : null;
+    const chkInvert = cfg.chkInvert ? $(cfg.chkInvert) : null;
+
+    let originalSrc = null;
+    let snapshotDataUrl = null;
+    let selection = null;
+    let dragging = false;
+    let dragStart = null;
+
+    function canvasPoint(evt) {
+      const rect = selCanvas.getBoundingClientRect();
+      const scaleX = selCanvas.width / rect.width;
+      const scaleY = selCanvas.height / rect.height;
+      const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+      const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+      return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    }
+
+    function clearSelection() {
+      selection = null;
+      selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+    }
+
+    function drawSelectionRect(x, y, w, h) {
+      selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+      selCtx.strokeStyle = "#c9a96e";
+      selCtx.lineWidth = 2;
+      selCtx.setLineDash([6, 4]);
+      selCtx.strokeRect(x, y, w, h);
+      selCtx.fillStyle = "rgba(201,169,110,0.15)";
+      selCtx.fillRect(x, y, w, h);
+    }
+
+    selCanvas.addEventListener("pointerdown", (e) => { dragging = true; dragStart = canvasPoint(e); });
+    selCanvas.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const p = canvasPoint(e);
+      const x = Math.min(dragStart.x, p.x), y = Math.min(dragStart.y, p.y);
+      const w = Math.abs(p.x - dragStart.x), h = Math.abs(p.y - dragStart.y);
+      selection = { x, y, w, h };
+      drawSelectionRect(x, y, w, h);
+    });
+    window.addEventListener("pointerup", () => { dragging = false; });
+
+    function takeSnapshot() { snapshotDataUrl = mainCanvas.toDataURL("image/png"); }
+
+    function drawImageObjectToMain(img) {
+      const maxDim = 1600;
+      let w = img.width, h = img.height;
+      const scale = Math.min(1, maxDim / Math.max(w, h));
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      mainCanvas.width = w; mainCanvas.height = h;
+      selCanvas.width = w; selCanvas.height = h;
+      mainCtx.drawImage(img, 0, 0, w, h);
+      clearSelection();
+      takeSnapshot();
+    }
+
+    function loadImage(dataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        originalSrc = dataUrl;
+        drawImageObjectToMain(img);
+        if (cfg.onLoaded) cfg.onLoaded();
+      };
+      img.src = dataUrl;
+    }
+
+    function crop() {
+      if (!selection || selection.w < 4 || selection.h < 4) return;
+      const { x, y, w, h } = selection;
+      const tmp = document.createElement("canvas");
+      tmp.width = Math.round(w); tmp.height = Math.round(h);
+      tmp.getContext("2d").drawImage(mainCanvas, x, y, w, h, 0, 0, tmp.width, tmp.height);
+      mainCanvas.width = tmp.width; mainCanvas.height = tmp.height;
+      selCanvas.width = tmp.width; selCanvas.height = tmp.height;
+      mainCtx.drawImage(tmp, 0, 0);
+      clearSelection();
+      takeSnapshot();
+    }
+
+    function rotate(deg) {
+      const w = mainCanvas.width, h = mainCanvas.height;
+      const tmp = document.createElement("canvas");
+      tmp.width = h; tmp.height = w;
+      const tctx = tmp.getContext("2d");
+      tctx.translate(tmp.width / 2, tmp.height / 2);
+      tctx.rotate((deg * Math.PI) / 180);
+      tctx.drawImage(mainCanvas, -w / 2, -h / 2);
+      mainCanvas.width = tmp.width; mainCanvas.height = tmp.height;
+      selCanvas.width = tmp.width; selCanvas.height = tmp.height;
+      mainCtx.drawImage(tmp, 0, 0);
+      clearSelection();
+      takeSnapshot();
+    }
+
+    function reset() {
+      if (!originalSrc) return;
+      const img = new Image();
+      img.onload = () => drawImageObjectToMain(img);
+      img.src = originalSrc;
+      if (chkBinarize) chkBinarize.checked = false;
+      if (chkInvert) chkInvert.checked = false;
+    }
+
+    function otsuThreshold(gray, len) {
+      const hist = new Array(256).fill(0);
+      for (let i = 0; i < len; i++) hist[gray[i]]++;
+      let sum = 0;
+      for (let t = 0; t < 256; t++) sum += t * hist[t];
+      let sumB = 0, wB = 0, wF = 0, maxVar = 0, threshold = 128;
+      for (let t = 0; t < 256; t++) {
+        wB += hist[t];
+        if (wB === 0) continue;
+        wF = len - wB;
+        if (wF === 0) break;
+        sumB += t * hist[t];
+        const mB = sumB / wB;
+        const mF = (sum - sumB) / wF;
+        const varBetween = wB * wF * (mB - mF) * (mB - mF);
+        if (varBetween > maxVar) { maxVar = varBetween; threshold = t; }
+      }
+      return threshold;
+    }
+
+    function applyPreprocess() {
+      if (!originalSrc || !chkBinarize) return;
+      const binarize = chkBinarize.checked;
+      const invert = chkInvert.checked;
+      const auto = chkAuto.checked;
+      const manualThresh = parseInt(rngThresh.value, 10);
+
+      const w = mainCanvas.width, h = mainCanvas.height;
+      const imgData = mainCtx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      const len = w * h;
+      const gray = new Uint8ClampedArray(len);
+
+      let min = 255, max = 0;
+      for (let i = 0, p = 0; i < len; i++, p += 4) {
+        const g = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+        gray[i] = g;
+        if (g < min) min = g;
+        if (g > max) max = g;
+      }
+      const range = Math.max(1, max - min);
+      for (let i = 0; i < len; i++) gray[i] = Math.round(((gray[i] - min) / range) * 255);
+
+      if (binarize) {
+        const threshold = auto ? otsuThreshold(gray, len) : manualThresh;
+        for (let i = 0, p = 0; i < len; i++, p += 4) {
+          let v = gray[i] >= threshold ? 255 : 0;
+          if (invert) v = 255 - v;
+          data[p] = data[p + 1] = data[p + 2] = v;
+        }
+      } else {
+        for (let i = 0, p = 0; i < len; i++, p += 4) {
+          let v = gray[i];
+          if (invert) v = 255 - v;
+          data[p] = data[p + 1] = data[p + 2] = v;
+        }
+      }
+      mainCtx.putImageData(imgData, 0, 0);
+    }
+
+    function reprocessFromSnapshot() {
+      if (!snapshotDataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+        mainCtx.drawImage(img, 0, 0);
+        applyPreprocess();
+      };
+      img.src = snapshotDataUrl;
+    }
+
+    if (cfg.btnCrop) $(cfg.btnCrop).addEventListener("click", crop);
+    if (cfg.btnRotateL) $(cfg.btnRotateL).addEventListener("click", () => rotate(-90));
+    if (cfg.btnRotateR) $(cfg.btnRotateR).addEventListener("click", () => rotate(90));
+    if (cfg.btnReset) $(cfg.btnReset).addEventListener("click", reset);
+
+    if (chkBinarize) {
+      chkAuto.addEventListener("change", (e) => { rngThresh.disabled = e.target.checked; reprocessFromSnapshot(); });
+      [chkBinarize, chkInvert].forEach((el) => el.addEventListener("change", reprocessFromSnapshot));
+      rngThresh.addEventListener("input", () => { if (!chkAuto.checked && chkBinarize.checked) reprocessFromSnapshot(); });
+    }
+
+    return {
+      loadImage,
+      getCanvas: () => mainCanvas,
+      hasImage: () => !!originalSrc
+    };
+  }
+
+  // =====================================================================
+  // 銘（mei）pipeline
+  // =====================================================================
+  createCaptureUI({
+    btnStartCam: "btnStartCam", btnStopCam: "btnStopCam", btnCapture: "btnCapture",
+    btnPickFile: "btnPickFile", fileInput: "fileInput", video: "cam",
+    camRow: "camRow", camActions: "camActions", camStatus: "camStatus",
+    onCaptured: (dataUrl) => meiStage.loadImage(dataUrl)
+  });
+
+  const meiStage = createImageStage({
+    mainCanvas: "mainCanvas", selCanvas: "selCanvas",
+    btnCrop: "btnCrop", btnRotateL: "btnRotateL", btnRotateR: "btnRotateR", btnReset: "btnReset",
+    chkBinarize: "chkBinarize", chkAuto: "chkAuto", rngThresh: "rngThresh", chkInvert: "chkInvert",
+    onLoaded: () => {
+      editStep.style.display = "block";
+      textStep.style.display = "none";
+      hamonStep.style.display = "none";
+      resultStep.style.display = "none";
+      editStep.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+
+  // ---------- OCR ----------
+  const progressWrap = $("progressWrap");
+  const progressBar = $("progressBar");
+  const progressLabel = $("progressLabel");
+
+  $("btnRecognize").addEventListener("click", async () => {
+    const btn = $("btnRecognize");
+    btn.disabled = true;
+    progressWrap.classList.add("active");
+    progressBar.style.width = "0%";
+    progressLabel.textContent = "文字認識モデルを読み込んでいます…";
+    try {
+      const worker = await Tesseract.createWorker("jpn_vert", 1, {
+        logger: (m) => {
+          if (m.status && typeof m.progress === "number") {
+            progressBar.style.width = Math.round(m.progress * 100) + "%";
+            progressLabel.textContent = m.status + " " + Math.round(m.progress * 100) + "%";
+          }
+        }
+      });
+      await worker.setParameters({ tessedit_pageseg_mode: "5" }); // SINGLE_BLOCK_VERT_TEXT
+      const { data } = await worker.recognize(meiStage.getCanvas());
+      await worker.terminate();
+
+      const cleaned = (data.text || "").replace(/[\s　]/g, "");
+      $("ocrText").value = cleaned;
+      textStep.style.display = "block";
+      hamonStep.style.display = "block";
+      resultStep.style.display = "none";
+      textStep.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e) {
+      console.error(e);
+      progressLabel.textContent = "文字認識に失敗しました。画像やネットワーク接続を確認してください。";
+    } finally {
+      btn.disabled = false;
+      progressWrap.classList.remove("active");
+    }
+  });
+
+  // =====================================================================
+  // 刃文（hamon）pipeline
+  // =====================================================================
+  createCaptureUI({
+    btnStartCam: "btnStartCamH", btnStopCam: "btnStopCamH", btnCapture: "btnCaptureH",
+    btnPickFile: "btnPickFileH", fileInput: "fileInputH", video: "camH",
+    camRow: "camRowH", camActions: "camActionsH", camStatus: "camStatusH",
+    onCaptured: (dataUrl) => hamonStage.loadImage(dataUrl)
+  });
+
+  const hamonStage = createImageStage({
+    mainCanvas: "hamonCanvas", selCanvas: "hamonSelCanvas",
+    btnCrop: "btnCropH", btnRotateL: "btnRotateLH", btnRotateR: "btnRotateRH", btnReset: "btnResetH",
+    onLoaded: () => {
+      $("hamonEditWrap").style.display = "block";
+      $("hamonCurveWrap").style.display = "none";
+      $("hamonSummary").style.display = "none";
+    }
+  });
+
+  // ---------- Hamon curve extraction & classification ----------
+  function grayscaleOf(canvas) {
+    const w = canvas.width, h = canvas.height;
+    const ctx = canvas.getContext("2d");
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const gray = new Float32Array(w * h);
+    let min = 255, max = 0;
+    for (let i = 0, p = 0; i < w * h; i++, p += 4) {
+      const g = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+      gray[i] = g;
+      if (g < min) min = g;
+      if (g > max) max = g;
+    }
+    const range = Math.max(1, max - min);
+    for (let i = 0; i < w * h; i++) gray[i] = ((gray[i] - min) / range) * 255;
+    return { gray, w, h };
+  }
+
+  function extractBoundaryCurve(canvas) {
+    const { gray, w, h } = grayscaleOf(canvas);
+    const marginTop = Math.max(1, Math.round(h * 0.08));
+    const marginBottom = Math.max(1, Math.round(h * 0.08));
+    const curve = new Float32Array(w);
+    for (let x = 0; x < w; x++) {
+      let bestY = Math.round(h / 2), bestVal = -1;
+      for (let y = marginTop; y < h - marginBottom; y++) {
+        const g = Math.abs(gray[(Math.min(h - 1, y + 1)) * w + x] - gray[(Math.max(0, y - 1)) * w + x]);
+        if (g > bestVal) { bestVal = g; bestY = y; }
+      }
+      curve[x] = bestY;
+    }
+    return curve;
+  }
+
+  function medianFilter(arr, win) {
+    const n = arr.length, out = new Float32Array(n), half = Math.floor(win / 2);
+    const buf = [];
+    for (let i = 0; i < n; i++) {
+      buf.length = 0;
+      for (let k = -half; k <= half; k++) buf.push(arr[Math.min(n - 1, Math.max(0, i + k))]);
+      buf.sort((a, b) => a - b);
+      out[i] = buf[half];
+    }
+    return out;
+  }
+
+  function movingAverage(arr, win) {
+    const n = arr.length, out = new Float32Array(n), half = Math.floor(win / 2);
+    for (let i = 0; i < n; i++) {
+      let s = 0, c = 0;
+      for (let k = -half; k <= half; k++) {
+        const idx = i + k;
+        if (idx >= 0 && idx < n) { s += arr[idx]; c++; }
+      }
+      out[i] = s / c;
+    }
+    return out;
+  }
+
+  function mean(a) { return a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0; }
+  function std(a) { const m = mean(a); return Math.sqrt(mean(a.map((v) => (v - m) * (v - m)))); }
+
+  function analyzeHamon(canvas) {
+    const w = canvas.width, h = canvas.height;
+    let curve = extractBoundaryCurve(canvas);
+    curve = medianFilter(curve, 7);
+    const smoothWin = Math.max(5, Math.round(w / 50));
+    const smoothed = movingAverage(curve, smoothWin);
+    const baselineWin = Math.max(smoothWin * 3, Math.round(w / 6));
+    const baseline = movingAverage(smoothed, baselineWin);
+    const residual = new Float32Array(w);
+    for (let i = 0; i < w; i++) residual[i] = baseline[i] - smoothed[i];
+
+    const peaksRaw = [];
+    for (let i = 2; i < w - 2; i++) {
+      if (residual[i] > residual[i - 1] && residual[i] >= residual[i + 1] &&
+          residual[i] > residual[i - 2] && residual[i] > residual[i + 2]) {
+        peaksRaw.push(i);
+      }
+    }
+    const peaks = [];
+    for (const p of peaksRaw) {
+      if (peaks.length && p - peaks[peaks.length - 1] < smoothWin) {
+        if (residual[p] > residual[peaks[peaks.length - 1]]) peaks[peaks.length - 1] = p;
+      } else {
+        peaks.push(p);
+      }
+    }
+
+    const amplitudes = peaks.map((p) => Math.abs(residual[p]));
+    const wavelengths = [];
+    for (let i = 1; i < peaks.length; i++) wavelengths.push(peaks[i] - peaks[i - 1]);
+
+    const ampMean = mean(amplitudes), ampStd = std(amplitudes);
+    const waveMean = mean(wavelengths), waveStd = std(wavelengths);
+    const ampCV = ampMean > 0 ? ampStd / ampMean : 0;
+    const waveCV = waveMean > 0 ? waveStd / waveMean : 0;
+    const normalizedAmp = h > 0 ? ampMean / h : 0;
+
+    let sharpness = 0;
+    if (peaks.length) {
+      const widths = peaks.map((p) => {
+        const peakVal = residual[p];
+        const halfVal = peakVal / 2;
+        let left = p, right = p;
+        while (left > 0 && residual[left] > halfVal) left--;
+        while (right < residual.length - 1 && residual[right] > halfVal) right++;
+        return right - left;
+      });
+      const meanWidth = mean(widths);
+      const ratio = waveMean > 0 ? meanWidth / waveMean : 1;
+      sharpness = Math.max(0, Math.min(1, 1 - ratio));
+    }
+
+    const features = { peakCount: peaks.length, ampMean, ampCV, waveMean, waveCV, normalizedAmp, sharpness };
+    const classification = classifyHamon(features);
+    return { smoothed, residual, peaks, features, classification };
+  }
+
+  function classifyHamon(f) {
+    if (f.peakCount < 2 || f.normalizedAmp < 0.015) {
+      return { tag: "直刃", label: "直刃（ほぼ直線的）の可能性" };
+    }
+    if (f.waveCV < 0.3 && f.ampCV < 0.35) {
+      if (f.sharpness > 0.55) return { tag: "尖り刃", label: "規則的な尖り刃調（互の目〜三本杉調）の可能性" };
+      return { tag: "互の目", label: "規則的な互の目調の可能性" };
+    }
+    if (f.waveCV < 0.55) {
+      return { tag: "湾れ", label: "湾れ調（大きく緩やかな波）の可能性" };
+    }
+    if (f.waveCV >= 0.55) {
+      return { tag: "乱れ", label: "乱れ調（不規則な波）の可能性" };
+    }
+    return { tag: "", label: "判定困難です。トリミング・回転・コントラストを調整して再試行してください。" };
+  }
+
+  function drawHamonOverlay(canvas, analysis) {
+    const curveCanvas = $("hamonCurveCanvas");
+    const w = canvas.width, h = canvas.height;
+    curveCanvas.width = w; curveCanvas.height = h;
+    const ctx = curveCanvas.getContext("2d");
+    ctx.drawImage(canvas, 0, 0);
+    ctx.strokeStyle = "#c9a96e";
+    ctx.lineWidth = Math.max(2, Math.round(w / 400));
+    ctx.beginPath();
+    analysis.smoothed.forEach((y, x) => { if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.stroke();
+
+    ctx.fillStyle = "#ff5a5a";
+    analysis.peaks.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(p, analysis.smoothed[p], Math.max(3, Math.round(w / 250)), 0, Math.PI * 2);
+      ctx.fill();
+    });
+    $("hamonCurveWrap").style.display = "block";
+  }
+
+  $("btnAnalyzeHamon").addEventListener("click", () => {
+    if (!hamonStage.hasImage()) return;
+    const canvas = hamonStage.getCanvas();
+    const analysis = analyzeHamon(canvas);
+    drawHamonOverlay(canvas, analysis);
+
+    const f = analysis.features;
+    const reg = (cv) => (cv < 0.3 ? "低い（規則的）" : cv < 0.55 ? "中程度" : "高い（不規則）");
+    const summaryEl = $("hamonSummary");
+    summaryEl.style.display = "block";
+    summaryEl.innerHTML =
+      `<div class="label">自動判定: ${escapeHtml(analysis.classification.label)}</div>` +
+      `<div class="detail">検出した波（峰）の数: ${f.peakCount} ／ 波長のばらつき: ${reg(f.waveCV)} ／ 振幅のばらつき: ${reg(f.ampCV)}<br>` +
+      `※ 赤丸はアルゴリズムが検出した波の頂点、金色の線が推定した匂口のラインです。実際の刃文と大きくずれている場合はトリミング・回転・コントラストを調整して再実行してください。`;
+
+    if (analysis.classification.tag) {
+      $("hamonSelect").value = analysis.classification.tag;
+    }
+  });
+
+  // =====================================================================
+  // Matching (銘テキスト ＋ 刃文タグ)
+  // =====================================================================
+  const HAMON_BONUS = 40;
+
+  function normalize(s) {
+    return (s || "").replace(/[^々〇〻㐀-鿿豈-﫿぀-ゟ゠-ヿ]/g, "");
+  }
+
+  function bigrams(s) {
+    const out = [];
+    for (let i = 0; i < s.length - 1; i++) out.push(s.substr(i, 2));
+    return out;
+  }
+
+  function ngramOverlapScore(text, candidate) {
+    if (candidate.length < 2) return text.includes(candidate) ? 1 : 0;
+    const cb = bigrams(candidate);
+    if (cb.length === 0) return 0;
+    let hits = 0;
+    for (const g of cb) if (text.includes(g)) hits++;
+    return hits / cb.length;
+  }
+
+  function meiScoreOf(text, entry) {
+    let score = 0;
+    const candidates = [entry.name, ...(entry.aliases || [])].filter(Boolean);
+    for (const c of candidates) {
+      const norm = normalize(c);
+      if (!norm) continue;
+      if (text.includes(norm)) {
+        score += norm.length * 10;
+      } else {
+        score += ngramOverlapScore(text, norm) * norm.length * 3;
+      }
+    }
+    return score;
+  }
+
+  function runMatch() {
+    const raw = $("ocrText").value;
+    const text = normalize(raw);
+    const hamonTag = $("hamonSelect") ? $("hamonSelect").value : "";
+    const resultsEl = $("results");
+    resultStep.style.display = "block";
+    resultStep.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    if (!text && !hamonTag) {
+      resultsEl.innerHTML = '<p class="empty">銘のテキスト、または刃文の種類のどちらも指定されていません。少なくとも一方を入力・選択してから検索してください。</p>';
+      return;
+    }
+    if (!database.length) {
+      resultsEl.innerHTML = '<p class="empty">データベースの読み込みに失敗しています。mei-database.json を確認してください。</p>';
+      return;
+    }
+
+    const scored = database
+      .map((entry) => {
+        const meiScore = text ? meiScoreOf(text, entry) : 0;
+        const hamonHit = !!(hamonTag && (entry.hamon || []).includes(hamonTag));
+        const score = meiScore + (hamonHit ? HAMON_BONUS : 0);
+        return { entry, score, meiScore, hamonHit };
+      })
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
+
+    if (!scored.length) {
+      resultsEl.innerHTML = '<p class="empty">一致する候補が見つかりませんでした。トリミング範囲や二値化設定、刃文の判定、または手入力の文字を見直してください。</p>';
+      return;
+    }
+
+    const maxScore = scored[0].score;
+    resultsEl.innerHTML = scored
+      .map((r, i) => {
+        const e = r.entry;
+        const pct = Math.max(6, Math.round((r.score / maxScore) * 100));
+        const meiTag = `<span class="tag ${r.meiScore > 0 ? "hit" : ""}">銘${r.meiScore > 0 ? ": 一致" : ": 不一致"}</span>`;
+        const hamonTagHtml = hamonTag
+          ? `<span class="tag ${r.hamonHit ? "hit" : ""}">刃文(${escapeHtml(hamonTag)})${r.hamonHit ? ": 一致" : ": 不一致"}</span>`
+          : "";
+        return `
+          <div class="result-card">
+            <div class="rank">候補 ${i + 1}</div>
+            <div class="name">${escapeHtml(e.name)}<span class="reading">${escapeHtml(e.reading || "")}</span></div>
+            <div class="meta">${escapeHtml(e.era || "")} ／ ${escapeHtml(e.tradition || "")} ／ ${escapeHtml(e.province || "")}</div>
+            <div class="evidence">${meiTag}${hamonTagHtml}</div>
+            <div class="note">${escapeHtml(e.note || "")}</div>
+            <div class="score-bar"><div style="width:${pct}%"></div></div>
+          </div>`;
+      })
+      .join("");
+  }
+
+  $("btnMatch").addEventListener("click", runMatch);
+  $("btnMatchWithHamon").addEventListener("click", runMatch);
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+})();
+</script>
+</body>
+</html>
