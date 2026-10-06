@@ -81,6 +81,11 @@ section { padding: 100px 48px; border-top: 1px solid var(--line); }
 .company-note { padding: 28px; border: 1px solid var(--line); border-left: 2px solid var(--gold); font-size: 13px; color: var(--muted); line-height: 2; }
 
 .contact-inner { max-width: 760px; }
+
+.kaitori-banner { display: inline-block; font-size: 11px; letter-spacing: 0.3em; color: var(--bg); background: var(--gold); padding: 6px 14px; margin-bottom: 24px; }
+.kaitori-models { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 48px; }
+.kaitori-models span { font-size: 13px; padding: 8px 16px; border: 1px solid var(--line); border-radius: var(--radius); }
+.kaitori-actions { margin-top: 48px; }
 .contact-inner > p { color: var(--muted); font-size: 14px; margin-bottom: 32px; line-height: 2; }
 
 footer { padding: 40px 48px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
@@ -113,6 +118,7 @@ footer p { font-size: 12px; color: var(--muted); }
     <span class="t" data-ja="合同会社 · 中古高級時計専門" data-en="Pre-owned Luxury Watches · Okinawa">合同会社 · 中古高級時計専門</span>
   </a>
   <nav>
+    <a href="#kaitori" class="t" data-ja="買取強化中" data-en="We Buy">買取強化中</a>
     <a href="#service" class="t" data-ja="事業内容" data-en="Services">事業内容</a>
     <a href="#gallery" class="t" data-ja="ギャラリー" data-en="Gallery">ギャラリー</a>
     <a href="#policy" class="t" data-ja="当社方針" data-en="Policy">当社方針</a>
@@ -137,10 +143,42 @@ footer p { font-size: 12px; color: var(--muted); }
     真贋確認・状態確認・適正価格設定を徹底した、安全で透明性の高い中古高級時計の売買・買取・委託販売を提供します。
   </p>
   <div class="hero-actions">
-    <a class="btn-primary t" href="#contact" data-ja="お問い合わせ・査定依頼" data-en="Inquiry / Appraisal">お問い合わせ・査定依頼</a>
+    <a class="btn-primary t" href="#kaitori" data-ja="ロレックス買取強化中" data-en="Now Buying Rolex">ロレックス買取強化中</a>
     <a class="btn-outline t" href="#service" data-ja="事業内容を見る" data-en="View Services">事業内容を見る</a>
   </div>
   <div class="hero-divider"></div>
+</section>
+
+<section id="kaitori">
+  <p class="section-label reveal">PURCHASE</p>
+  <p class="kaitori-banner reveal t" data-ja="買取強化中" data-en="NOW BUYING">買取強化中</p>
+  <h2 class="section-title reveal t" data-ja="ロレックスの買取を強化しています" data-en="We Are Actively Buying Rolex">ロレックスの買取を強化しています</h2>
+  <p class="section-desc reveal t"
+     data-ja="現在、ロレックスを中心に高級時計の買取を強化しています。ご使用中の時計、箱や保証書がない時計、動かない時計もまずはご相談ください。市場相場に基づき、根拠のある査定額をご提示します。"
+     data-en="We are currently strengthening our purchase of luxury watches, especially Rolex. Watches in use, without box or papers, or not running — please contact us first. We offer appraisals grounded in current market data.">現在、ロレックスを中心に高級時計の買取を強化しています。ご使用中の時計、箱や保証書がない時計、動かない時計もまずはご相談ください。市場相場に基づき、根拠のある査定額をご提示します。</p>
+  <div class="kaitori-models reveal">
+    <span>Submariner</span><span>GMT-Master II</span><span>Explorer</span><span>Cosmograph Daytona</span><span>Datejust</span><span>Oyster Perpetual</span>
+  </div>
+  <div class="service-grid reveal">
+    <div class="service-card">
+      <div class="service-num">01</div>
+      <h3 class="t" data-ja="写真を送る" data-en="Send Photos">写真を送る</h3>
+      <p class="t" data-ja="お問い合わせフォームから、時計の写真（文字盤・裏ぶた・付属品）と型番をお送りください。型番がわからなくても大丈夫です。" data-en="Send photos of the dial, caseback and accessories, plus the reference number if known, via the contact form.">お問い合わせフォームから、時計の写真（文字盤・裏ぶた・付属品）と型番をお送りください。型番がわからなくても大丈夫です。</p>
+    </div>
+    <div class="service-card">
+      <div class="service-num">02</div>
+      <h3 class="t" data-ja="査定額のご提示" data-en="Receive a Quote">査定額のご提示</h3>
+      <p class="t" data-ja="市場相場と状態をもとに、査定額と根拠をご連絡します。査定は無料で、ご納得いただけない場合はお断りいただいて構いません。" data-en="We reply with a quote and its basis. Appraisals are free, and you are welcome to decline.">市場相場と状態をもとに、査定額と根拠をご連絡します。査定は無料で、ご納得いただけない場合はお断りいただいて構いません。</p>
+    </div>
+    <div class="service-card">
+      <div class="service-num">03</div>
+      <h3 class="t" data-ja="現物確認・お支払い" data-en="Inspection &amp; Payment">現物確認・お支払い</h3>
+      <p class="t" data-ja="現物の確認と、古物営業法に基づく本人確認（運転免許証等）を行ったうえでお支払いします。18歳未満の方からの買取はお受けできません。" data-en="After inspecting the watch and verifying your identity as required by law, we complete payment. We cannot buy from persons under 18.">現物の確認と、古物営業法に基づく本人確認（運転免許証等）を行ったうえでお支払いします。18歳未満の方からの買取はお受けできません。</p>
+    </div>
+  </div>
+  <div class="kaitori-actions reveal">
+    <a class="btn-primary t" href="#contact" data-ja="無料査定を依頼する" data-en="Request a Free Appraisal">無料査定を依頼する</a>
+  </div>
 </section>
 
 <section id="service">
